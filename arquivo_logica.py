@@ -12,54 +12,60 @@ class MEI_Calculadora:
         self.valorTributavel = 0
 
 
-    def coleta_de_informações(self):
+    def obter_faturamento(self): # Método para coletar as informações dos usuarios
 
         # Solicitação do Faturamento, fazendo a validação se é um número valido e se está dentro do limite do MEI.
+
+        # Valida se o valor digitado é um valor valido.
         try: 
             self.faturamento = float(self.faturamento)
         except ValueError:
             print("Erro: Faturamento deve ser um número válido.")
             return None
 
+        # Valida se o valor está dendo do limite do MEI, e se não é negativo.
         if self.faturamento > 81000:
-            print('fatuamento maior que o permitido')
-            return
+            return(False,'faturamento maior que o permitido')
         elif self.faturamento < 0:
-            print("Erro: Faturamento deve ser um número válido.")
-            return
-        else:print("Informação coletada com Sucesso")
+            return(False, "Erro: Faturamento deve ser um número válido.")
+        else: 
+            return(True, "Informação coletada com Sucesso")
 
-        
-        # Solicitação valor das despesas
+       
+    def obter_despesas(self): # Método solicitação valor das despesas
+
+         # Valida se o valor digitado é um valor valido.
         try: 
             self.despesas = float(self.despesas)
         except ValueError:
             print("Erro: O valor das despesas deve ser um número válido.")
             return None
                 
+        # Valida de o valor das despesas não ultrapassa o faturamento e não é negativo
         if self.despesas >= self.faturamento:
-            print("O valor das despesas não deve ultrapassar o valor da faturamento")
-            return
+            return(False, "O valor das despesas não deve ultrapassar o valor da faturamento")
         elif self.despesas < 0:
-            print("Erro: O valor das despesas deve ser um número válido.")
-            return
-        else: print("Informação coletada com Sucesso")
+            return(False, "Erro: O valor das despesas deve ser um número válido.")
+        else: return(True, "Informação coletada com Sucesso")
 
-        # Solicitação do tipo de atividade.
+    def obter_atividade(self): # Método Solicitação do tipo de atividade.
+
+        # Valida se o valor digitado é um valor valido.
         try: 
             self.tipo_atividade = float(self.tipo_atividade)
         except ValueError:
             print("Erro: Escolha uma opção valida.")
             return None
 
+        # Valida se está escolhendo uma das opções possiveis. Não podendo ser maior que 3 e menor que 0.
         if self.tipo_atividade > 3 or self.tipo_atividade <= 0:
-            print("Escolha um opção valida")
-            return
-        else: print("Informação coletada com Sucesso")
+            return(False,"Escolha um opção valida")
+        else: return(True, "Informação coletada com Sucesso")
         
 
     
-    def parcela_isenta (self):
+    def parcela_isenta (self): # Método para calcular a parcela isenta
+
         if self.tipo_atividade == 1: # Comércio, indústria e transporte de cargas 
             self.valorIsento = (self.faturamento * 0.08)
         elif self.tipo_atividade == 2: # Transporte de passageiros 
@@ -69,24 +75,28 @@ class MEI_Calculadora:
 
         print(self.valorIsento)
 
-    def parcela_tributavel (self):
+
+    def parcela_tributavel (self): # Método para calcular parcela Tributavel
         self.valorTributavel = (self.faturamento - self.despesas - self.valorIsento)
         print(f"O valor tributavel é:R$ {self.valorTributavel:.2f}")
 
-    def validação(self):
+
+    def validação_final (self): # Validação final, saber se o usuario precisa ou não declara o imposto de renda.
         if self.valorTributavel <= 33888:
-            print(f"O seu valor tributavel foi abaixo do esperado, não é necessario declarar imposto de renda")
+            return(False, f"O seu valor tributavel foi abaixo do esperado, não é necessario declarar imposto de renda")
         
         else:
-            print("Você precisa declarar o imposto de renda")
+            return(True, "Você precisa declarar o imposto de renda")
 
         
 
 teste = MEI_Calculadora(20000, 22000, 1)
-teste.coleta_de_informações()
+teste.obter_faturamento()
+teste.obter_despesas
+teste.obter_atividade
 teste.parcela_isenta()
-teste.parcela_isenta()
-teste.validação()
+teste.parcela_tributavel()
+teste.validação_final()
 
 
 
