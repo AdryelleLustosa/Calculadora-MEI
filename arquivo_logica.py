@@ -73,12 +73,12 @@ class MEI_Calculadora:
         elif self.tipo_atividade == 3: # Serviços
             self.valorIsento = (self.faturamento * 0.32)
 
-        print(self.valorIsento)
+        return self.valorIsento
 
 
     def parcela_tributavel (self): # Método para calcular parcela Tributavel
         self.valorTributavel = (self.faturamento - self.despesas - self.valorIsento)
-        print(f"O valor tributavel é:R$ {self.valorTributavel:.2f}")
+        return self.valorTributavel
 
 
     def validação_final (self): # Validação final, saber se o usuario precisa ou não declara o imposto de renda.
