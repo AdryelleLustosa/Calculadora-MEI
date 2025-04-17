@@ -90,14 +90,6 @@ class MEI_Calculadora:
 
         
 
-teste = MEI_Calculadora(20000, 22000, 1)
-teste.obter_faturamento()
-teste.obter_despesas
-teste.obter_atividade
-teste.parcela_isenta()
-teste.parcela_tributavel()
-teste.validação_final()
-
 
 
 
