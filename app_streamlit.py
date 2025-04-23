@@ -1,266 +1,195 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 from arquivo_logica import MEI_Calculadora
-from fpdf import FPDF
 
 
-import streamlit as st
-from arquivo_logica import MEI_Calculadora
 
 ##############################
-# Função para converter string do formato brasileiro para float
+# Inicialização de session_state - Serve para garantir que o aplicativo sempre tenha as variaveis definidas, mesmo antes de interagir. Para não dar erro
+##############################
+
+
+if "is_calculated" not in st.session_state:
+    st.session_state["is_calculated"]        = False
+    st.session_state["mei_calculator"]       = None
+    st.session_state["parcela_isenta_val"]   = 0.0
+    st.session_state["parcela_tributavel_val"]= 0.0
+    st.session_state["resultado_final"]      = (False, "")
+
+
+##############################
+# Inicialização do estado de sessão - Essas funções são para formatar os valores no padrão brasileiro.
 ##############################
 def converter_valor(valor_str):
     """
     Converte, por exemplo, "9.000,00" para 9000.00 (float).
     """
-    valor_limpo = valor_str.replace(".", "").replace(",", ".")
+    valor_normalizado = valor_str.replace(".", "").replace(",", ".")
     try:
-        return float(valor_limpo)
+        return float(valor_normalizado)
     except ValueError:
         return None
 
-##############################
-# Função para exibir float no formato brasileiro
-##############################
 def formatar_para_brasileiro(num: float) -> str:
     """
-    Recebe, por exemplo, 7200.0 e retorna 'R$ 7.200,00'.
+    Recebe 7200.0 e retorna 'R$ 7.200,00'.
     """
-    # Primeiro obtemos o formato em US (ex.: "7,200.00")
-    str_us = f"{num:,.2f}"
-    # Troca ',' por 'X', '.' por ',', e 'X' por '.'
-    str_br = str_us.replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"R$ {str_br}"
+    valor_em_ingles = f"{num:,.2f}"                   # ex.: "7,200.00"
+    valor_em_brasil = valor_em_ingles.replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {valor_em_brasil}"
 
 ##############################
-# Layout Principal
+# Layout Principal - Aqui é a configuração visual, começando com o titulo, texto informativo, e o menu interativo separado em colunas.
 ##############################
-st.title("Calculadora MEI – Declaração de Imposto de Renda")
-st.info("Preencha os dados abaixo para saber se você, MEI, precisa declarar o IRPF.")
+st.title("Calculadora MEI – Declaração de Imposto de Renda (IRPF)")
+st.info("""Você é MEI e quer descobrir se precisa declarar o IRPF 🧮? \n  
+Esta ferramenta foi criada **para Microempreendedores Individuais**  que **ainda não têm serviço 
+contábil contratado**, tornando fácil verificar seus rendimentos do MEI.  No final, gere um **PDF** com 
+instruções detalhadas para a sua declaração, caso seja necessário! """)
 
-
-# Inputs em 3 colunas
 col1, col2, col3 = st.columns(3)
-
 with col1:
-    faturamento_texto = st.text_input(
-    "Faturamento Anual (ex.: 9.000,00)", 
-    value="0,00",
-    help= "Todos os valores recebidos pela empresa em 2024")
-                                                                          
+    faturamento_txt = st.text_input(
+        "Faturamento Anual (ex.: 9.000,00)", "0,00",
+        help="Total faturado no ano (R$)."
+    )
 with col2:
-    despesas_texto = st.text_input(
-        "Despesas Anuais (ex.: 5.000,00)",
-        value="0,00",
-        help="Exemplos: Pró-labore, DAS, Mercadorias, Aluguel, Água, Luz e Tel. Só serão dedutíveis despesas comprovadas (nota fiscal e/ou recibo) que constem no CNPJ da empresa."
+    despesas_txt = st.text_input(
+        "Despesas Anuais (ex.: 5.000,00)", "0,00",
+        help="Informe despesas comprovadas e em nome da empresa, como contas de água, luz, telefone, compras de mercadorias, manutenção, salários e aluguel."
     )
 with col3:
     tipo_atividade = st.selectbox(
         "Tipo de Atividade",
-        options=[1, 2, 3],
-        index=0,
+        [1, 2, 3],
         format_func=lambda x: {
-            1: "Comércio, indústria e transporte de cargas (8%)",
+            1: "Comércio/Indústria/Transporte de Carga (8%)",
             2: "Transporte de passageiros (16%)",
-            3: "Prestação de serviços (32%)"
+            3: "Prestação de Serviços (32%)"
         }[x]
     )
 
-# Botão para processar os dados
-if st.button("Calcular"):
-    # Converte os valores inseridos para float
-    faturamento = converter_valor(faturamento_texto)
-    despesas = converter_valor(despesas_texto)
-    
-    if faturamento is None:
+
+##############################
+# 1) BOTÃO CALCULAR- Aqui começa a parte do calculo da aplicação.
+##############################
+if st.button("Calcular", key="btn_calc"):
+    # 1.a) Converter inputs 
+    faturamento_val = converter_valor(faturamento_txt)
+    despesas_val    = converter_valor(despesas_txt)
+    if faturamento_val is None:
         st.error("Formato de faturamento inválido. Use ex.: 9.000,00")
         st.stop()
-    if despesas is None:
+    if despesas_val is None:
         st.error("Formato de despesas inválido. Use ex.: 5.000,00")
         st.stop()
-    
-    # Cria o objeto da lógica MEI_Calculadora
-    calc = MEI_Calculadora(faturamento, despesas, tipo_atividade)
-    
-    # Validações
-    res_fat = calc.obter_faturamento()
-    if res_fat is None or not res_fat[0]:
-        st.error(f"Faturamento inválido: {res_fat[1] if res_fat else 'Erro na conversão.'}")
+
+    # 1.b) Instanciar classe e validar cada etapa
+    mei_calc    = MEI_Calculadora(faturamento_val, despesas_val, tipo_atividade)
+    valido_fat  = mei_calc.obter_faturamento()
+    if not valido_fat[0]:
+        st.error(f"Faturamento inválido: {valido_fat[1]}")
         st.stop()
-    
-    res_desc = calc.obter_despesas()
-    if res_desc is None or not res_desc[0]:
-        st.error(f"Despesas inválidas: {res_desc[1] if res_desc else 'Erro na conversão.'}")
+    valido_desp = mei_calc.obter_despesas()
+    if not valido_desp[0]:
+        st.error(f"Despesas inválidas: {valido_desp[1]}")
         st.stop()
-    
-    res_ativ = calc.obter_atividade()
-    if res_ativ is None or not res_ativ[0]:
-        st.error(f"Tipo de atividade inválido: {res_ativ[1] if res_ativ else 'Erro na conversão.'}")
+    valido_ati  = mei_calc.obter_atividade()
+    if not valido_ati[0]:
+        st.error(f"Tipo de atividade inválido: {valido_ati[1]}")
         st.stop()
-    
-    # Se todas as validações estiverem OK, efetua os cálculos
-    valor_isento = calc.parcela_isenta()           # Retorna o valor da parcela isenta
-    valor_tributavel = calc.parcela_tributavel()     # Retorna o valor da parcela tributável
-    res_final = calc.validação_final()             # Retorna (bool, mensagem final)
-    
-    # Formata os valores para o padrão brasileiro
-    valor_isento_br = formatar_para_brasileiro(valor_isento)
-    valor_tributavel_br = formatar_para_brasileiro(valor_tributavel)
-    
-       # Exibe os resultados em "cards" lado a lado com espaçamento
+
+    # 1.c) Cálculos leves
+    parcela_isenta   = mei_calc.parcela_isenta()
+    parcela_tributavel = mei_calc.parcela_tributavel()
+    resultado_validacao = mei_calc.validacao_final()  # # (bool, mensagem)
+
+    # 1.d) Guardar no session_state
+    st.session_state["mei_calculator"]        = mei_calc
+    st.session_state["parcela_isenta_val"]    = parcela_isenta
+    st.session_state["parcela_tributavel_val"]= parcela_tributavel
+    st.session_state["resultado_final"]       = resultado_validacao
+    st.session_state["is_calculated"]         = True
+
+##############################
+# 2) EXIBIÇÃO DE RESULTADOS  
+##############################
+if st.session_state["is_calculated"]:
+    # Formatar para BR
+    isentar_br = formatar_para_brasileiro(st.session_state["parcela_isenta_val"])
+    tributario_br = formatar_para_brasileiro(st.session_state["parcela_tributavel_val"])
+    resultado_final    = st.session_state["resultado_final"]
+
+
+    # Cards via Markdown+CSS
     st.markdown(f"""
+    <style>
+      .card-container {{ display:flex; gap:16px; justify-content:center; margin-top:24px; }}
+      .card {{ flex:1; max-width:360px; background:#f0f2f6; border-radius:12px;
+               padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04); text-align:center; }}
+      .isenta h2 {{ color:#0f5688; }} .tributavel h2 {{ color:#c53030; }}
+      .status-card {{ background:#e8f2fc; border-radius:12px;
+                      padding:16px; margin:24px auto; max-width:760px; text-align:center; }}
+    </style>
+    <div class="card-container">
+      <div class="card isenta">
+        <h4>Parcela Isenta</h4><h2>{isentar_br}</h2>
+      </div>
+      <div class="card tributavel">
+        <h4>Parcela Tributável</h4><h2>{tributario_br}</h2>
+      </div>
+    </div>
+    <div class="status-card"><strong>{resultado_final[1]}</strong></div>
+    """, unsafe_allow_html=True)
+
+# condição que indica se já pode gerar o PDF
+pdf_disponivel = (
+    st.session_state["is_calculated"] and
+    st.session_state["resultado_final"][0]
+)
+
+st.download_button(
+    label="📄 Baixar PDF de Instruções para Declaração",
+    data=(
+        st.session_state["mei_calculator"]
+            .gerar_pdf_com_dados_e_imagens()
+        if pdf_disponivel else b""
+    ),
+    file_name="Instrucoes_Declaracao_MEI.pdf",
+    mime="application/pdf",
+    key="btn_download",
+    disabled=not pdf_disponivel
+)
+
+
+##############################
+# 4) INFO COMPLEMENTAR
+##############################
+st.markdown("""
 <style>
-  /* Container geral dos cards – gap e margem reduzidos ao mínimo */
-  .card-container {{
-    display: flex;
-    gap: 6px;            /* antes 10px */
-    margin: 6px 0;       /* antes 10px 0 */
-    justify-content: center;
-  }}
-
-  /* Card base – padding super enxuto */
-  .card {{
-    flex: 1;
-    max-width: 360px;
-    background-color: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    padding: 8px;        /* antes 7px, pode até testar 6px */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }}
-  .card h4 {{
-    margin-bottom: 8px;  /* antes maior */
-    font-size: 1.0rem;
-  }}
-  .card h2 {{
-    margin: 0;
-    font-size: 1.8rem;   /* um pouco menor */
-  }}
-
-  /* Status card – margem e padding mínimas */
-  .status-card {{
-    background-color: #EFF6FF;
-    border: 1px solid #BFDBFE;
-    border-radius: 12px;
-    padding: 8px;        /* antes 7px */
-    margin: 8px auto;    /* antes 32px/16px */
-    max-width: 740px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    text-align: center;
-  }}
-  .status-card h3 {{
-    margin: 0;
-    font-size: 1.2rem;   /* um pouco menor */
-    line-height: 1.3;
-  }}
-
-  /* Info card – margem e padding mínimas */
-  .info-card {{
-    background-color: #F1F5F9;
-    border: 1px solid #CBD5E1;
-    border-radius: 12px;
-    padding: 12px;       /* antes 7px */
-    margin: 12px auto;   /* antes 48px/24px */
-    max-width: 740px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }}
-  .info-card ul {{
-    padding-left: 16px;
-    margin: 6px 0;
-  }}
-  .info-card li {{
-    margin-bottom: 4px;
-  }}
+  .info-card {
+    background:#f0f2f6;
+    border-radius:12px;
+    padding:16px;
+    margin:32px auto;
+    max-width:760px;
+    line-height:1.5;
+    font-size:15px;
+  }
 </style>
-
-<div class="card-container">
-  <div class="card isenta">
-    <h4>Parcela Isenta</h4>
-    <h2>{valor_isento_br}</h2>
-  </div>
-  <div class="card tributavel">
-    <h4>Parcela Tributável</h4>
-    <h2>{valor_tributavel_br}</h2>
-  </div>
-</div>
-
-<div class="status-card">
-  <h3>{res_final[1]}</h3>
-</div>
-
 <div class="info-card">
-  <p>Esta calculadora considera apenas ganhos da atividade MEI. Para outras fontes de renda ou situações especiais, consulte um contador.</p>
-  <p>Mesmo com baixo rendimento tributável, os seguintes fatores podem obrigar à declaração do IRPF:</p>
+  <p>🔍 Esta calculadora considera apenas os rendimentos obtidos como MEI.  
+     Caso você tenha outras fontes de renda, é recomendável buscar orientação contábil.</p>
+
+  <p>Mesmo com rendimento tributável reduzido, algumas situações ainda podem obrigar a declaração do Imposto de Renda:</p>
   <ul>
-    <li>Rendimentos isentos acima de R$ 200.000,00</li>
-    <li>Residência fiscal parcial no Brasil em 2024</li>
-    <li>Operações na bolsa acima de R$ 40.000,00</li>
-    <li>Receita rural bruta > R$ 153.199,50</li>
-    <li>Bens cujo valor total ultrapasse R$ 800.000,00</li>
-    <li>Venda de imóvel com isenção de IR</li>
+    <li>Recebimento de rendimentos isentos superiores a R$ 200.000,00</li>
+    <li>Ter residido no Brasil em parte do ano de 2024</li>
+    <li>Operações na bolsa de valores acima de R$ 40.000,00</li>
+    <li>Receita bruta da atividade rural acima de R$ 153.199,50</li>
+    <li>Posse de bens com valor total superior a R$ 800.000,00</li>
+    <li>Venda de imóvel com isenção de imposto</li>
   </ul>
-  <p>Se “sim” em qualquer item acima, consulte um contador antes de finalizar sua declaração.</p>
+  <p>⚠️ Se alguma dessas situações se aplicar a você, é importante falar com um contador antes de finalizar sua declaração.</p>
+  <p><strong>Contato:</strong> ALCONTÁBIL@gmail.com</p>
 </div>
-""", unsafe_allow_html=True)
-    
-# import streamlit as st
-# from fpdf import FPDF
-
-# def limpar_texto(texto: str) -> str:
-#     """
-#     Remove ou substitui caracteres Unicode problemáticos para a codificação latin-1.
-#     Exemplo: substitui en dash (–) e em dash (—) por traço (-) e substitui aspas inteligentes por aspas simples ou duplas.
-#     """
-#     # Substitui en dash (U+2013) e em dash (U+2014) por um traço simples
-#     texto = texto.replace("\u2013", "-").replace("\u2014", "-")
-#     # Substitui aspas “smart” por aspas duplas
-#     texto = texto.replace("“", '"').replace("”", '"')
-#     # Substitui aspas simples inteligentes por aspas simples
-#     texto = texto.replace("’", "'")
-#     return texto
-
-# def gerar_pdf(conteudo: str) -> bytes:
-#     """
-#     Gera um PDF a partir do conteúdo fornecido e retorna os bytes do PDF,
-#     limpando previamente os caracteres problemáticos.
-#     """
-#     # Limpa o texto para remover caracteres que não podem ser codificados
-#     conteudo_limpo = limpar_texto(conteudo)
-    
-#     pdf = FPDF()
-#     pdf.add_page()
-#     pdf.set_font("Arial", size=12)
-#     pdf.multi_cell(0, 10, txt=conteudo_limpo)
-    
-#     # Converte o PDF para bytes utilizando latin-1 com errors="replace"
-#     pdf_bytes = pdf.output(dest="S").encode("latin-1", errors="replace")
-#     return pdf_bytes
-
-# # Interface do Streamlit para gerar e baixar o PDF
-# st.title("Gerar PDF com Streamlit")
-# st.write("Clique no botão abaixo para gerar e baixar o PDF.")
-
-# # Conteúdo de exemplo para o PDF (pode incluir en dash, aspas inteligentes, etc.)
-# conteudo_pdf = (
-#     "Calculadora MEI – Declaração de Imposto de Renda\n\n"
-#     "Este documento apresenta os resultados da Calculadora MEI – análise de faturamento, despesas, "
-#     "e outros fatores. \n\n"
-#     "Obs: Se o valor das despesas ultrapassar o faturamento, a validação mostrará erro – "
-#     "confira os dados com atenção. – Use sempre o formato correto."
-# )
-
-# # Gera os bytes do PDF com o conteúdo limpo
-# pdf_bytes = gerar_pdf(conteudo_pdf)
-
-# # Botão de download do PDF
-# st.download_button(
-#     label="Baixar PDF",
-#     data=pdf_bytes,
-#     file_name="calculadora_mei.pdf",
-#     mime="application/pdf"
-# )
+""", unsafe_allow_html=True) 

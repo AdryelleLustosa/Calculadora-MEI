@@ -1,0 +1,33 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mei-calculadora:latest
+    container_name: mei-calculadora
+
+    # (se tiver um .env com TOKEN, descomente a linha abaixo)
+    # env_file:
+    #   - .env
+
+    ports:
+      - "8501:8501"
+
+    volumes:
+      - .:/app
+
+    command:
+      - streamlit
+      - run
+      - app_streamlit.py
+      - --server.port
+      - "8501"
+      - --server.address
+      - 0.0.0.0
+
+    # mantém o stdout/TTY ativo para ver o banner completo
+    stdin_open: true
+    tty: true
+
+    # reinicia automaticamente se travar
+    restart: unless-stopped
