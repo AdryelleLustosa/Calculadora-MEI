@@ -2,9 +2,6 @@ import streamlit as st
 from arquivo_logica import MEI_Calculadora
 
 
-# DEBUG: mostra no app qual tema está ativo
-st.write("📋 Tema carregado:", st.get_option("theme.base"))
-
 ##############################
 # Inicialização de session_state - Serve para garantir que o aplicativo sempre tenha as variaveis definidas, mesmo antes de interagir. Para não dar erro
 ##############################
@@ -116,29 +113,95 @@ if st.button("Calcular", key="btn_calc"):
 # 2) EXIBIÇÃO DE RESULTADOS  
 ##############################
 if st.session_state["is_calculated"]:
-    # Formatar para BR
-    isentar_br = formatar_para_brasileiro(st.session_state["parcela_isenta_val"])
-    tributario_br = formatar_para_brasileiro(st.session_state["parcela_tributavel_val"])
-    resultado_final    = st.session_state["resultado_final"]
+    # a) Formatar para BR
+    isentar_br      = formatar_para_brasileiro(st.session_state["parcela_isenta_val"])
+    tributario_br   = formatar_para_brasileiro(st.session_state["parcela_tributavel_val"])
+    resultado_final = st.session_state["resultado_final"]
 
+    theme = st.get_option("theme.base")  # "light" ou "dark"
 
-    # Cards via Markdown+CSS
+# b) Cards via Markdown+CSS
     st.markdown(f"""
     <style>
-      .card-container {{ display:flex; gap:16px; justify-content:center; margin-top:24px; }}
-      .card {{ flex:1; max-width:360px; background:#f0f2f6; border-radius:12px;
-               padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04); text-align:center; }}
-      .isenta h2 {{ color:#0f5688; }} .tributavel h2 {{ color:#c53030; }}
-      .status-card {{ background:#e8f2fc; border-radius:12px;
-                      padding:16px; margin:24px auto; max-width:760px; text-align:center; }}
+    /* Contêiner flexível que quebra em várias linhas se necessário */
+    .card-container {{
+        display: flex;
+        flex-wrap: wrap;          /* permite empilhar em telas estreitas */
+        gap: 16px;
+        justify-content: center;
+        margin-top: 24px;
+    }}
+
+    /* Estilo base do card */
+    .card {{
+        flex: 1 1 280px;          /* cresce/encolhe e tenta ter 280px de largura */
+        max-width: 360px;
+        background: #e8f2fc;      /* mantém seu azul claro */
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        text-align: center;
+        word-wrap: break-word;    /* evita que valores longos quebrem mal */
+    }}
+
+    /* Títulos e valores */
+    .card h4 {{
+        margin: 0;
+        font-size: 1rem;
+        color: #1f2937;
+    }}
+    .card.isenta h2 {{
+        color: #0f5688;
+    }}
+    .card.tributavel h2 {{
+        color: #c53030;
+    }}
+    .card h2 {{
+        margin: 8px 0;
+        font-size: 1.8rem;
+        line-height: 1.2;
+    }}
+
+    /* Bloco de status */
+    .status-card {{
+        background: #A6C9EC;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 24px auto;
+        max-width: 760px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }}
+    .status-card strong {{
+        color: #0f5688;
+        font-size: 1.1rem;
+    }}
+
+    /* Ajustes para celular (largura ≤ 600px) */
+    @media (max-width: 600px) {{
+        .card-container {{
+        flex-direction: column; /* empilha verticalmente */
+        align-items: stretch;
+        }}
+        .card {{
+        max-width: none;
+        flex: 1 1 auto;
+        }}
+        .card h2 {{
+        font-size: 1.5rem;
+        }}
+    }}
     </style>
+
     <div class="card-container">
-      <div class="card isenta">
-        <h4>Parcela Isenta</h4><h2>{isentar_br}</h2>
-      </div>
-      <div class="card tributavel">
-        <h4>Parcela Tributável</h4><h2>{tributario_br}</h2>
-      </div>
+    <div class="card isenta">
+        <h4>Parcela Isenta</h4>
+        <h2>{isentar_br}</h2>
+    </div>
+    <div class="card tributavel">
+        <h4>Parcela Tributável</h4>
+        <h2>{tributario_br}</h2>
+    </div>
     </div>
     <div class="status-card"><strong>{resultado_final[1]}</strong></div>
     """, unsafe_allow_html=True)
@@ -169,7 +232,7 @@ st.download_button(
 st.markdown("""
 <style>
   .info-card {
-    background:#f0f2f6;
+    background:#e8f2fc;
     border-radius:12px;
     padding:16px;
     margin:32px auto;
