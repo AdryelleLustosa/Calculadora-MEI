@@ -6,9 +6,9 @@ services:
     image: mei-calculadora:latest
     container_name: mei-calculadora
 
-    # (se tiver um .env com TOKEN, descomente a linha abaixo)
-    # env_file:
-    #   - .env
+    # força o Streamlit a rodar na mesma porta que expomos
+    environment:
+      - PORT=8501
 
     ports:
       - "8501:8501"
@@ -21,13 +21,10 @@ services:
       - run
       - app_streamlit.py
       - --server.port
-      - "8501"
+      - "${PORT}"
       - --server.address
-      - 0.0.0.0
+      - "0.0.0.0"
 
-    # mantém o stdout/TTY ativo para ver o banner completo
     stdin_open: true
     tty: true
-
-    # reinicia automaticamente se travar
     restart: unless-stopped

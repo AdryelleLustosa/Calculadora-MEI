@@ -1,23 +1,21 @@
-# Use uma imagem leve do Python
-FROM python:3.10-slim
+# Use uma imagem base leve com Python
+FROM python:3.9-slim
 
-# Evita arquivos .pyc e força saída de logs
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
+# Defina o diretório de trabalho
 WORKDIR /app
 
-# 1) Copia e instala dependências
+# Copie apenas o requirements para aproveitar o cache do Docker
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
 
-# 2) Copia todo o código da aplicação
+# Instale dependências
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Agora copie todo o restante do seu código
 COPY . .
 
-EXPOSE 8501
+# Só para documentar a porta padrão
+EXPOSE 8080
 
-# 3) Inicia o Streamlit
-CMD ["streamlit", "run", "app_streamlit.py", \
-     "--server.port", "8501", \
-     "--server.address", "0.0.0.0"]
+# ENTRYPOINT que chama o app.py, que lê $PORT e inicia o Streamlit
+ENTRYPOINT ["python", "app.py"]
+

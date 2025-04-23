@@ -1,0 +1,7 @@
+[theme]
+base="light"                      # força o tema claro
+primaryColor="#0f5688"            # azul principal (botões, sliders, etc)
+backgroundColor="#f0f2f6"         # cor de fundo geral
+secondaryBackgroundColor="#e8f2fc" # cards de status
+textColor="#1e293b"               # cor do texto
+font="sans serif"                 # opcional, sua fonte preferida

@@ -2,6 +2,8 @@ import streamlit as st
 from arquivo_logica import MEI_Calculadora
 
 
+# DEBUG: mostra no app qual tema está ativo
+st.write("📋 Tema carregado:", st.get_option("theme.base"))
 
 ##############################
 # Inicialização de session_state - Serve para garantir que o aplicativo sempre tenha as variaveis definidas, mesmo antes de interagir. Para não dar erro
